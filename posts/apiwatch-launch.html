@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APIWatch Launch: Real-time API Monitoring for Developers | AI Developer Blog</title>
+  <meta name="description" content="Introducing APIWatch - a powerful real-time API monitoring tool that helps developers track endpoints, analyze response times, and get instant alerts for downtime.">
+  <meta name="keywords" content="API monitoring, APIWatch, real-time monitoring, uptime monitoring, API health check, developer tools">
+  <meta name="author" content="155143783">
+  
+  <meta property="og:title" content="APIWatch Launch: Real-time API Monitoring for Developers">
+  <meta property="og:description" content="Introducing APIWatch - a powerful real-time API monitoring tool.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://155143783.github.io/posts/apiwatch-launch.html">
+  
+  <link rel="stylesheet" href="/style.css">
+  <link rel="canonical" href="https://155143783.github.io/posts/apiwatch-launch.html">
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "APIWatch Launch: Real-time API Monitoring for Developers",
+    "author": { "@type": "Person", "name": "155143783" },
+    "datePublished": "2026-05-01",
+    "url": "https://155143783.github.io/posts/apiwatch-launch.html"
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <h1><a href="/">AI Developer Blog</a></h1>
+    <nav>
+      <a href="/">Blog</a>
+      <a href="https://github.com/155143783" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <main class="post-content">
+    <a href="/" class="back-link">← Back to Blog</a>
+    
+    <h1>APIWatch Launch: Real-time API Monitoring for Developers</h1>
+    <div class="post-meta">
+      <span>May 1, 2026</span>
+      <span>By 155143783</span>
+      <span>API, Monitoring, DevTools</span>
+    </div>
+
+    <p>Today I'm excited to announce the launch of <strong>APIWatch</strong> - a powerful real-time API monitoring tool designed specifically for developers who need to track their endpoints, analyze response times, and get instant alerts when something goes wrong.</p>
+
+    <h2>Why APIWatch?</h2>
+
+    <p>As developers, we rely on numerous APIs to build our applications. But how do you know when an API goes down? How do you track response time trends over weeks? Traditional monitoring solutions are often:</p>
+    <ul>
+      <li>❌ Too expensive for individual developers</li>
+      <li>❌ Complex to set up and configure</li>
+      <li>❌ Lacking real-time alerting capabilities</li>
+      <li>❌ Not designed for API-specific metrics</li>
+    </ul>
+
+    <p>APIWatch solves these problems with a developer-first approach.</p>
+
+    <h2>Key Features</h2>
+
+    <h3>🔍 Real-time Endpoint Monitoring</h3>
+    <p>Monitor any HTTP endpoint with customizable intervals. Set up checks as frequent as every 30 seconds or as relaxed as once a day. Each check captures:</p>
+    <ul>
+      <li>HTTP status code</li>
+      <li>Response time (in milliseconds)</li>
+      <li>Response body (optional, for health check validation)</li>
+      <li>Timestamp</li>
+    </ul>
+
+    <h3>📊 Response Time Analytics</h3>
+    <p>Track your API's performance over time with detailed analytics. View:</p>
+    <ul>
+      <li>Average response times</li>
+      <li>Minimum and maximum response times</li>
+      <li>Uptime percentage</li>
+      <li>Historical trends</li>
+    </ul>
+
+    <h3>🚨 Instant Alerts</h3>
+    <p>Never miss an API outage. APIWatch supports multiple alert channels:</p>
+    <ul>
+      <li><strong>Email notifications</strong> - Get alerts directly in your inbox</li>
+      <li><strong>Webhook integration</strong> - Connect to Slack, Discord, or any custom endpoint</li>
+      <li><strong>Status page</strong> - Public status page for your users</li>
+    </ul>
+
+    <h3>💰 Free Tier for Developers</h3>
+    <p>APIWatch offers a generous free tier that includes:</p>
+    <ul>
+      <li>Up to 5 monitored endpoints</li>
+      <li>60-second check intervals</li>
+      <li>24-hour data retention</li>
+      <li>Email alerts</li>
+    </ul>
+
+    <h3>💎 Pro Tier - $5/month</h3>
+    <p>For power users and teams:</p>
+    <ul>
+      <li>Unlimited endpoints</li>
+      <li>30-second check intervals</li>
+      <li>30-day data retention</li>
+      <li>All alert channels</li>
+      <li>API access</li>
+    </ul>
+
+    <h2>How It Works</h2>
+
+    <h3>1. Add Your Endpoint</h3>
+    <pre><code>POST /api/endpoints
+{
+  "name": "My API",
+  "url": "https://api.example.com/health",
+  "method": "GET",
+  "interval": 60,
+  "expectedStatus": 200
+}</code></pre>
+
+    <h3>2. View Real-time Status</h3>
+    <p>Dashboard shows all your endpoints with their current status and recent history.</p>
+
+    <h3>3. Set Up Alerts</h3>
+    <pre><code>POST /api/alerts
+{
+  "type": "webhook",
+  "endpointId": "abc123",
+  "url": "https://hooks.slack.com/services/xxx",
+  "trigger": "failure"
+}</code></pre>
+
+    <h2>Live Demo</h2>
+
+    <p>Want to see APIWatch in action? Check out the live demo:</p>
+    <p><a href="https://reflect-shaft-kenny-raleigh.trycloudflare.com" target="_blank" rel="noopener">https://reflect-shaft-kenny-raleigh.trycloudflare.com</a></p>
+
+    <h2>API Reference</h2>
+
+    <h3>Base URL</h3>
+    <pre><code>https://reflect-shaft-kenny-raleigh.trycloudflare.com/api</code></pre>
+
+    <h3>Endpoints</h3>
+    <pre><code># Get all endpoints
+GET /endpoints
+
+# Add new endpoint
+POST /endpoints
+{
+  "name": "string",
+  "url": "string",
+  "method": "GET|POST|PUT|DELETE",
+  "interval": 60,
+  "expectedStatus": 200
+}
+
+# Get endpoint history
+GET /endpoints/:id/history
+
+# Delete endpoint
+DELETE /endpoints/:id</code></pre>
+
+    <h2>Tech Stack</h2>
+
+    <p>APIWatch is built with modern technologies:</p>
+    <ul>
+      <li><strong>Backend</strong>: Node.js, Express, TypeScript</li>
+      <li><strong>Database</strong>: SQLite (for portability) / PostgreSQL (for production)</li>
+      <li><strong>Real-time</strong>: Server-Sent Events (SSE)</li>
+      <li><strong>Deployment</strong>: Docker, Cloudflare Tunnels</li>
+    </ul>
+
+    <h2>Roadmap</h2>
+
+    <p>Here's what's coming next:</p>
+    <ul>
+      <li>🔜 Multi-region monitoring</li>
+      <li>🔜 Custom health check scripts</li>
+      <li>🔜 Team collaboration</li>
+      <li>🔜 Mobile app</li>
+      <li>🔜 PagerDuty integration</li>
+    </ul>
+
+    <h2>Get Started</h2>
+
+    <p>Ready to monitor your APIs? Try the live demo or deploy your own instance:</p>
+
+    <div class="github-link">
+      <strong>📦 GitHub Repository:</strong> <a href="https://github.com/155143783/apiwatch" target="_blank" rel="noopener">https://github.com/155143783/apiwatch</a>
+      <p style="margin-top:12px;"><strong>🔗 Live Demo:</strong> <a href="https://reflect-shaft-kenny-raleigh.trycloudflare.com" target="_blank" rel="noopener">https://reflect-shaft-kenny-raleigh.trycloudflare.com</a></p>
+      <p style="margin-top:8px;color:#57606a;font-size:14px;">Star the repo, open issues, and contribute!</p>
+    </div>
+
+    <h2>Conclusion</h2>
+
+    <p>APIWatch is my solution to the problem I've faced as a developer - keeping track of all the APIs I depend on. With real-time monitoring, instant alerts, and a developer-friendly API, I hope it helps you build more reliable applications.</p>
+
+    <p>Give it a try and let me know what you think! 🚀</p>
+
+  </main>
+
+  <footer>
+    <p>&copy; 2026 AI Developer Blog. Built with GitHub Pages.</p>
+  </footer>
+</body>
+</html>

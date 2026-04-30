@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Build a Production-Ready MCP Server with TypeScript | AI Developer Blog</title>
+  <meta name="description" content="Comprehensive guide to building production-ready MCP servers with TypeScript. Learn about secure HTTP transport, DNS rebinding protection, and deployment to Smithery and mcp.so.">
+  <meta name="keywords" content="MCP, Model Context Protocol, TypeScript, MCP server, AI tools, Smithery, mcp.so">
+  <meta name="author" content="155143783">
+  
+  <meta property="og:title" content="Build a Production-Ready MCP Server with TypeScript">
+  <meta property="og:description" content="Comprehensive guide to building production-ready MCP servers with TypeScript.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://155143783.github.io/posts/mcp-server-typescript.html">
+  
+  <link rel="stylesheet" href="/style.css">
+  <link rel="canonical" href="https://155143783.github.io/posts/mcp-server-typescript.html">
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Build a Production-Ready MCP Server with TypeScript",
+    "author": { "@type": "Person", "name": "155143783" },
+    "datePublished": "2026-05-01",
+    "url": "https://155143783.github.io/posts/mcp-server-typescript.html"
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <h1><a href="/">AI Developer Blog</a></h1>
+    <nav>
+      <a href="/">Blog</a>
+      <a href="https://github.com/155143783" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <main class="post-content">
+    <a href="/" class="back-link">← Back to Blog</a>
+    
+    <h1>Build a Production-Ready MCP Server with TypeScript: A Complete Guide</h1>
+    <div class="post-meta">
+      <span>May 1, 2026</span>
+      <span>By 155143783</span>
+      <span>MCP, TypeScript, AI</span>
+    </div>
+
+    <p>The Model Context Protocol (MCP) has emerged as a game-changer in the AI ecosystem, enabling developers to build servers that expose data and functionality to Large Language Models in a standardized way. In this comprehensive guide, we'll walk through building a production-ready MCP server with TypeScript, implementing secure HTTP transport for public exposure, and deploying it to Smithery and mcp.so.</p>
+
+    <h2>What is MCP and Why Does It Matter in 2026?</h2>
+
+    <p>The Model Context Protocol is rapidly becoming the de facto standard for AI-tool integration. With the explosion of AI agents and copilots in 2026, the need for standardized, secure ways to connect LLMs to external tools and data sources has never been greater.</p>
+
+    <p>MCP servers allow you to:</p>
+    <ul>
+      <li><strong>Expose data</strong> through Resources (like GET endpoints)</li>
+      <li><strong>Provide functionality</strong> through Tools (like POST endpoints)</li>
+      <li><strong>Define interaction patterns</strong> through Prompts (reusable templates)</li>
+    </ul>
+
+    <p>Unlike traditional REST APIs, MCP is specifically designed for AI interactions, providing built-in support for structured tool calling, context management, and capability negotiation between clients and servers.</p>
+
+    <h2>Setting Up Your TypeScript MCP Server</h2>
+
+    <h3>Prerequisites</h3>
+    <ul>
+      <li>Node.js 18+</li>
+      <li>TypeScript 5.0+</li>
+      <li>npm or yarn</li>
+    </ul>
+
+    <h3>Installation</h3>
+    <pre><code>npm init -y
+npm install @modelcontextprotocol/sdk zod express cors
+npm install -D typescript @types/node @types/express @types/cors tsx</code></pre>
+
+    <h3>Project Structure</h3>
+    <pre><code>mcp-data-api/
+├── src/
+│   ├── index.ts          # Main entry point
+│   ├── server.ts         # MCP server implementation
+│   ├── resources/        # Resource handlers
+│   ├── tools/            # Tool implementations
+│   └── transports/       # Transport configurations
+├── tsconfig.json
+├── package.json
+└── Dockerfile</code></pre>
+
+    <h2>Implementing StreamableHTTPServerTransport</h2>
+
+    <p>The <code>StreamableHTTPServerTransport</code> is essential for exposing your MCP server publicly. Unlike stdio (which requires local process communication), HTTP transport allows remote AI clients to connect.</p>
+
+    <h3>Why Streamable HTTP?</h3>
+    <ol>
+      <li><strong>Remote Access</strong>: Clients can connect from anywhere</li>
+      <li><strong>Scalability</strong>: Works with load balancers and container orchestration</li>
+      <li><strong>Standard Integration</strong>: Uses familiar HTTP/HTTPS protocols</li>
+    </ol>
+
+    <h2>DNS Rebinding Protection</h2>
+
+    <p>When exposing MCP servers publicly, DNS rebinding attacks are a significant threat. Here's how to protect your server:</p>
+
+    <h3>Origin Validation Middleware</h3>
+    <pre><code>app.use((req, res, next) => {
+  const allowedOrigins = [
+    "https://your-production-domain.com",
+    "https://smithery.ai",
+    "https://mcp.so"
+  ];
+  
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins.includes(origin)) {
+    return res.status(403).json({ error: "Origin not allowed" });
+  }
+  
+  next();
+});</code></pre>
+
+    <h3>Secret Token Validation</h3>
+    <pre><code>const API_SECRET = process.env.MCP_API_SECRET;
+
+app.use("/mcp", (req, res, next) => {
+  const secret = req.headers["x-mcp-secret"];
+  
+  if (!secret || secret !== API_SECRET) {
+    return res.status(401).json({ error: "Invalid or missing secret" });
+  }
+  
+  next();
+});</code></pre>
+
+    <h2>Deployment to Smithery</h2>
+
+    <p>Smithery provides an excellent platform for hosting MCP servers with built-in discovery, OAuth support, and client configuration management.</p>
+
+    <pre><code># Install Smithery CLI
+npm install -g @smithery/cli
+
+# Authenticate
+smithery login
+
+# Publish your server
+smithery mcp publish "https://api.your-domain.com/mcp" -n @your-org/mcp-data-api</code></pre>
+
+    <h2>Best Practices for Production</h2>
+    <ol>
+      <li><strong>Health Checks</strong>: Implement <code>/health</code> endpoint for container orchestration</li>
+      <li><strong>Rate Limiting</strong>: Use express-rate-limit to prevent abuse</li>
+      <li><strong>Logging</strong>: Implement structured logging with request IDs</li>
+      <li><strong>Metrics</strong>: Add Prometheus metrics for monitoring</li>
+      <li><strong>Graceful Shutdown</strong>: Handle SIGTERM properly</li>
+      <li><strong>CORS Configuration</strong>: Be explicit about allowed origins</li>
+    </ol>
+
+    <h2>Conclusion</h2>
+
+    <p>Building a production-ready MCP server with TypeScript is straightforward with the official SDK. The key considerations for public exposure are:</p>
+    <ul>
+      <li>Implement proper DNS rebinding protection</li>
+      <li>Use HTTPS in production</li>
+      <li>Add secret token validation</li>
+      <li>Configure allowed origins carefully</li>
+      <li>Deploy to platforms like Smithery for easy discovery</li>
+    </ul>
+
+    <div class="github-link">
+      <strong>📦 GitHub Repository:</strong> <a href="https://github.com/155143783/mcp-data-api" target="_blank" rel="noopener">https://github.com/155143783/mcp-data-api</a>
+      <p style="margin-top:8px;color:#57606a;font-size:14px;">Star, fork, and contribute to the project!</p>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>&copy; 2026 AI Developer Blog. Built with GitHub Pages.</p>
+  </footer>
+</body>
+</html>

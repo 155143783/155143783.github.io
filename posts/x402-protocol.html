@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>x402 Protocol: Enabling Micro-payments for AI Agents | AI Developer Blog</title>
+  <meta name="description" content="Deep dive into the HTTP 402 protocol for machine-native payments. Learn how x402 enables AI agents to pay for API access using stablecoins like USDC on Base.">
+  <meta name="keywords" content="x402, HTTP 402, micro-payments, AI agents, USDC, Base, blockchain, crypto payments">
+  <meta name="author" content="155143783">
+  
+  <meta property="og:title" content="x402 Protocol: Enabling Micro-payments for AI Agents">
+  <meta property="og:description" content="Deep dive into the HTTP 402 protocol for machine-native payments.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://155143783.github.io/posts/x402-protocol.html">
+  
+  <link rel="stylesheet" href="/style.css">
+  <link rel="canonical" href="https://155143783.github.io/posts/x402-protocol.html">
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "x402 Protocol: Enabling Micro-payments for AI Agents",
+    "author": { "@type": "Person", "name": "155143783" },
+    "datePublished": "2026-05-01",
+    "url": "https://155143783.github.io/posts/x402-protocol.html"
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <h1><a href="/">AI Developer Blog</a></h1>
+    <nav>
+      <a href="/">Blog</a>
+      <a href="https://github.com/155143783" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <main class="post-content">
+    <a href="/" class="back-link">← Back to Blog</a>
+    
+    <h1>x402 Protocol: Enabling Micro-payments for AI Agents with HTTP 402</h1>
+    <div class="post-meta">
+      <span>May 1, 2026</span>
+      <span>By 155143783</span>
+      <span>x402, Blockchain, AI</span>
+    </div>
+
+    <p>The HTTP 402 "Payment Required" status code has existed since 1992, waiting for a purpose. In 2025, with the rise of autonomous AI agents and machine-to-machine commerce, x402 has finally given it meaning. This protocol enables frictionless, programmatic payments for API access, data retrieval, and digital services—all without human intervention.</p>
+
+    <h2>The Problem: Why Traditional Payments Don't Work for AI</h2>
+
+    <p>Current payment systems were designed for humans. They assume someone is clicking "Buy Now", credit card information can be entered manually, and account creation is acceptable.</p>
+
+    <p>AI agents and autonomous systems face a different reality:</p>
+    <pre><code>// What AI agents actually need
+const agent = new AIAgent();
+await agent.access("premium-data-api"); // Must work autonomously
+await agent.pay(0.001); // Micro-payments, not subscriptions
+await agent.verify(); // Cryptographic proof, not receipts</code></pre>
+
+    <p>Legacy systems fail because:</p>
+    <ol>
+      <li><strong>No autonomous access</strong>: APIs require human login flows</li>
+      <li><strong>Subscription models</strong>: Pay monthly for features you use once</li>
+      <li><strong>High fees</strong>: Credit card processing eats micro-payment margins</li>
+      <li><strong>Slow settlement</strong>: Days for funds to clear</li>
+      <li><strong>Chargebacks</strong>: Humans can dispute, machines can't</li>
+    </ol>
+
+    <h2>What is x402?</h2>
+
+    <p>x402 is an open payment standard that leverages HTTP 402 to enable machine-native payments. The core concept:</p>
+    <pre><code>Client Request → Server Responds 402 → Client Pays → Client Retries with Proof → Server Verifies & Serves</code></pre>
+
+    <h2>The Protocol Flow</h2>
+
+    <p>When a client requests a paid resource without payment, the server responds with HTTP 402:</p>
+    <pre><code>HTTP/1.1 402 Payment Required
+Content-Type: application/json
+
+{
+  "x402Version": 1,
+  "error": "Payment required to access this resource",
+  "accepts": [
+    {
+      "scheme": "exact",
+      "network": "base-mainnet",
+      "maxAmountRequired": "100",
+      "asset": "0xA0b86991C6218b36c1d19D4a2e9Eb0cE3606EB48",
+      "payTo": "0x1234567890abcdef1234567890abcdef12345678",
+      "resource": "/api/premium-data"
+    }
+  ]
+}</code></pre>
+
+    <h2>Adding x402 to Your API</h2>
+
+    <p>The fastest way to add x402 support with Hono:</p>
+    <pre><code>import { paymentMiddleware } from "@x402/hono";
+
+const app = new Hono();
+
+app.use(
+  paymentMiddleware({
+    "GET /premium-data": {
+      accepts: [
+        {
+          scheme: "exact",
+          price: "$0.01",
+          network: "eip155:84532",  // Base Sepolia
+          payTo: createPayToAddress,
+        }
+      ],
+      description: "Premium market data access"
+    }
+  }, new x402ResourceServer(facilitatorClient))
+);</code></pre>
+
+    <h2>x402 with Stablecoins: USDC on Base</h2>
+
+    <p>Base, developed by Coinbase, has become the preferred network for x402 payments due to:</p>
+    <ul>
+      <li><strong>Low fees</strong>: ~$0.001 per transaction</li>
+      <li><strong>Fast finality</strong>: ~2 seconds</li>
+      <li><strong>USDC native</strong>: No bridging required</li>
+      <li><strong>ERC-3009</strong>: Enables gasless transfers</li>
+    </ul>
+
+    <h2>Real-World Use Cases</h2>
+
+    <h3>1. AI Data Providers</h3>
+    <p>Services can monetize probabilistic data with micro-payments:</p>
+    <pre><code># Get latest metrics (costs $0.001)
+curl -H "Payment-Signature: ..." \
+  https://api.duonlabs.com/v1/metrics/latest/
+
+# Generate scenarios (costs $0.01)
+curl -X POST -H "Payment-Signature: ..." \
+  https://api.duonlabs.com/v1/scenarios/generation/</code></pre>
+
+    <h3>2. AI Agent Tool Access</h3>
+    <p>Autonomous agents can now pay for tools dynamically:</p>
+    <pre><code>class Agent:
+    async def use_tool(self, tool_name):
+        tool = await self.discover_tool(tool_name)
+        
+        if tool.requires_payment:
+            price = tool.get_price()
+            await self.wallet.pay(price)
+            
+        return await tool.execute()</code></pre>
+
+    <h3>3. Content Monetization</h3>
+    <p>Publishers can monetize API access without subscriptions.</p>
+
+    <h2>The Future of x402</h2>
+
+    <p>x402 is gaining rapid adoption:</p>
+    <ul>
+      <li><strong>Stripe</strong>: Private preview of x402 payments</li>
+      <li><strong>Fastly</strong>: HTTP 402 responses for edge computing</li>
+      <li><strong>Cloudflare Workers</strong>: Native x402 support announced</li>
+      <li><strong>AI Frameworks</strong>: LangChain, AutoGPT adding x402 support</li>
+    </ul>
+
+    <h2>Getting Started</h2>
+
+    <pre><code>npm install @x402/sdk @x402/hono</code></pre>
+
+    <h2>Conclusion</h2>
+
+    <p>x402 represents a fundamental shift in how machines pay for resources. By leveraging the HTTP 402 status code for payment signaling, stablecoins (USDC) for instant settlement, cryptographic signatures for verification, and facilitators for simplified integration, we can finally build truly autonomous AI systems that pay for what they use.</p>
+
+    <p>The protocol is production-ready today. Start integrating x402 into your APIs and unlock a new monetization model designed for the agentic era.</p>
+
+    <div class="github-link">
+      <strong>📦 GitHub Repository:</strong> <a href="https://github.com/155143783/x402-data-api" target="_blank" rel="noopener">https://github.com/155143783/x402-data-api</a>
+      <p style="margin-top:8px;color:#57606a;font-size:14px;">Star the repo and contribute to the future of machine payments!</p>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>&copy; 2026 AI Developer Blog. Built with GitHub Pages.</p>
+  </footer>
+</body>
+</html>
