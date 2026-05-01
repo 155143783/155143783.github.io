@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API监控实战：5分钟部署开源APIWatch监控你的微服务 | AI Developer Blog</title>
+  <meta name="description" content="详细讲解如何用开源工具APIWatch监控微服务API，包括功能介绍、5分钟快速部署指南、告警配置实战。适合开发者、DevOps工程师。">
+  <meta name="keywords" content="API监控, 微服务监控, 开源监控工具, APIWatch, DevOps, 告警配置">
+  <meta name="author" content="155143783">
+  
+  <meta property="og:title" content="API监控实战：5分钟部署开源APIWatch监控你的微服务">
+  <meta property="og:description" content="用开源工具APIWatch监控微服务API的完整指南">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://155143783.github.io/posts/api-monitoring-guide.html">
+  
+  <link rel="stylesheet" href="/style.css">
+  <link rel="canonical" href="https://155143783.github.io/posts/api-monitoring-guide.html">
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "API监控实战：5分钟部署开源APIWatch监控你的微服务",
+    "author": { "@type": "Person", "name": "155143783" },
+    "datePublished": "2026-05-06",
+    "url": "https://155143783.github.io/posts/api-monitoring-guide.html"
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <h1><a href="/">AI Developer Blog</a></h1>
+    <nav>
+      <a href="/">Blog</a>
+      <a href="https://github.com/155143783" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <main class="post-content">
+    <a href="/" class="back-link">← 返回博客</a>
+    
+    <h1>API监控实战：5分钟部署开源APIWatch监控你的微服务</h1>
+    <div class="post-meta">
+      <span>2026年5月6日</span>
+      <span>作者: 155143783</span>
+      <span>标签: API监控, DevOps, 开源工具</span>
+    </div>
+
+    <p>作为开发者，你是否曾经遇到过这些问题：API突然挂了却没有及时发现、响应时间变慢却找不到原因、凌晨三点收到用户投诉才发现服务不可用。如果你有这些困扰，那么这篇文章就是为你准备的。</p>
+
+    <p>今天我要介绍一个我开发的开源工具——<strong>APIWatch</strong>，它能帮助你在5分钟内搭建一套完整的API监控系统，让你的微服务监控变得简单高效。</p>
+
+    <h2>为什么你的微服务需要API监控？</h2>
+
+    <p>在微服务架构中，API是服务间通信的纽带。一个API的故障可能导致整个系统的级联崩溃。根据我的经验，未监控的API故障平均发现时间（MTTD）可以长达数小时，而这段时间内你的用户正在经历糟糕的体验。</p>
+
+    <h3>没有监控的代价</h3>
+    <ul>
+      <li>❌ <strong>响应时间劣化</strong> - 你的用户会发现API越来越慢，但你不知道问题出在哪里</li>
+      <li>❌ <strong>故障发现延迟</strong> - 用户报告问题后你才知道服务挂了</li>
+      <li>❌ <strong>难以定位根因</strong> - 没有历史数据，很难复现和诊断问题</li>
+      <li>❌ <strong>无法量化SLA</strong> - 你无法告诉客户你的服务可用性是多少</li>
+    </ul>
+
+    <h3>有监控的好处</h3>
+    <ul>
+      <li>✅ <strong>分钟级故障发现</strong> - 服务异常后几分钟内就能收到告警</li>
+      <li>✅ <strong>性能趋势可见</strong> - 提前发现响应时间恶化的趋势</li>
+      <li>✅ <strong>根因分析有据</strong> - 完整的健康历史帮助快速定位问题</li>
+      <li>✅ <strong>SLA可量化</strong> - 准确计算服务可用性和响应时间分布</li>
+    </ul>
+
+    <h2>APIWatch核心功能一览</h2>
+
+    <p>APIWatch是我在开发多个API项目过程中逐渐完善的监控工具，它的设计理念是<strong>简洁、高效、开源</strong>。</p>
+
+    <h3>🔍 多端点同时监控</h3>
+    <p>支持同时监控多个API端点，每个端点可以设置独立的检查间隔（30秒到24小时）。每次检查都会记录：</p>
+    <ul>
+      <li>HTTP状态码</li>
+      <li>响应时间（毫秒级精度）</li>
+      <li>响应内容（可选，用于健康检查验证）</li>
+      <li>时间戳</li>
+    </ul>
+
+    <h3>📊 响应时间分析</h3>
+    <p>内置统计引擎，实时计算：</p>
+    <ul>
+      <li>平均响应时间、最大/最小响应时间</li>
+      <li>可用率百分比（过去1小时/24小时/7天）</li>
+      <li>健康历史趋势图</li>
+    </ul>
+
+    <h3>🚨 多通道告警</h3>
+    <p>支持多种告警通知方式：</p>
+    <ul>
+      <li><strong>邮件通知</strong> - 服务异常时发送邮件</li>
+      <li><strong>Webhook</strong> - 对接Slack、Discord或任意自定义端点</li>
+      <li><strong>公开状态页</strong> - 为用户提供服务状态页面</li>
+    </ul>
+
+    <h3>🔒 隐私优先架构</h3>
+    <p>数据存储在本地SQLite，无需云数据库，<strong>你的监控数据永远不会离开你的服务器</strong>。这对于需要内网监控或对数据安全有要求的企业尤为重要。</p>
+
+    <h2>5分钟快速部署指南</h2>
+
+    <h3>第一步：安装环境</h3>
+    <p>确保你的服务器上安装了Node.js 18或更高版本：</p>
+    <pre><code># 检查Node.js版本
+node --version
+# 确保版本 >= 18.0.0
+
+# 如果没有安装，推荐使用nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install 18
+nvm use 18</code></pre>
+
+    <h3>第二步：克隆并安装</h3>
+    <pre><code># 克隆项目
+git clone https://github.com/155143783/apiwatch.git
+cd apiwatch
+
+# 安装依赖
+npm install
+
+# 安装成功后会看到类似输出
+# added 45 packages in 5s</code></pre>
+
+    <h3>第三步：启动服务</h3>
+    <pre><code># 启动服务
+npm start
+
+# 你会看到类似输出
+# > apiwatch@1.0.0 start
+# > node server.js
+# APIWatch服务已启动: http://localhost:3003
+# 监控引擎运行中...</code></pre>
+
+    <h3>第四步：访问控制台</h3>
+    <p>打开浏览器访问 <code>http://你的服务器IP:3003</code>，你将看到：</p>
+    <ul>
+      <li>仪表盘概览 - 所有端点的健康状态</li>
+      <li>添加端点 - 输入API的URL和名称</li>
+      <li>历史数据 - 查看过去24小时的监控数据</li>
+    </ul>
+
+    <h2>告警配置实战</h2>
+
+    <h3>配置邮件告警</h3>
+    <p>APIWatch支持SMTP邮件告警。在环境中配置以下变量：</p>
+    <pre><code># .env 文件
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+ALERT_EMAIL=oncall@yourcompany.com</code></pre>
+
+    <h3>配置Webhook告警</h3>
+    <p>对于Slack或Discord通知，使用Webhook方式更简单：</p>
+    <pre><code># 添加Webhook端点
+curl -X POST http://localhost:3003/api/alerts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "webhook",
+    "endpoint_id": 1,
+    "config": {
+      "url": "https://hooks.slack.com/services/xxx/yyy/zzz",
+      "method": "POST"
+    },
+    "condition": "failure",
+    "enabled": true
+  }'</code></pre>
+
+    <h3>智能告警规则</h3>
+    <p>告警规则支持多种触发条件：</p>
+    <pre><code># 连续失败3次才告警（避免网络抖动）
+# 响应时间超过5秒告警
+# 可用率低于99.5%告警
+
+# 配置示例
+{
+  "condition": "response_time",
+  "threshold": 5000,  // 毫秒
+  "comparison": "greater_than",
+  "consecutive": 2,   // 连续2次触发
+  "enabled": true
+}</code></pre>
+
+    <h2>生产环境部署建议</h2>
+
+    <h3>使用PM2管理进程</h3>
+    <pre><code># 全局安装PM2
+npm install -g pm2
+
+# 启动服务
+pm2 start server.js --name apiwatch
+
+# 设置开机自启
+pm2 startup
+pm2 save</code></pre>
+
+    <h3>使用Nginx反向代理</h3>
+    <pre><code># /etc/nginx/sites-available/apiwatch
+server {
+    listen 80;
+    server_name apiwatch.yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3003;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}</code></pre>
+
+    <h3>配置HTTPS</h3>
+    <pre><code># 使用Let's Encrypt免费证书
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d apiwatch.yourdomain.com
+
+# 自动续期已配置</code></pre>
+
+    <h2>进阶：集成到你的工作流</h2>
+
+    <h3>与Prometheus集成</h3>
+    <p>APIWatch支持导出Prometheus格式的指标：</p>
+    <pre><code># 访问Prometheus指标端点
+curl http://localhost:3003/metrics
+
+# 输出格式
+# apiwatch_endpoint_up{endpoint="api1"} 1
+# apiwatch_response_time_seconds{endpoint="api1"} 0.234
+# apiwatch_requests_total{endpoint="api1"} 1440</code></pre>
+
+    <h3>与Grafana可视化</h3>
+    <p>导入预置的Grafana Dashboard模板，你可以看到：</p>
+    <ul>
+      <li>所有端点的实时状态</li>
+      <li>响应时间热力图</li>
+      <li>可用率趋势图</li>
+      <li>告警历史时间线</li>
+    </ul>
+
+    <h2>常见问题</h2>
+
+    <h3>Q: 支持监控HTTPS端点吗？</h3>
+    <p>当然支持。APIWatch会自动处理SSL证书验证。</p>
+
+    <h3>Q: 可以监控需要认证的API吗？</h3>
+    <p>是的。你可以在添加端点时配置：</p>
+    <ul>
+      <li>Basic Auth</li>
+      <li>Bearer Token</li>
+      <li>API Key</li>
+      <li>自定义HTTP头</li>
+    </ul>
+
+    <h3>Q: 数据存储在哪里？</h3>
+    <p>默认存储在 <code>data/apiwatch.db</code>（SQLite）。你可以连接外部MySQL/PostgreSQL：</p>
+    <pre><code>DATABASE_URL=mysql://user:pass@host:3306/apiwatch</code></pre>
+
+    <h2>总结</h2>
+
+    <p>APIWatch是我在实践中不断打磨的工具，它的核心理念是：<strong>让API监控变得简单，不再是大型企业的专利</strong>。无论你是独立开发者、小团队还是大型企业，都可以从中受益。</p>
+
+    <p>项目完全开源，你可以自由使用、修改和分发。如果你有任何问题或建议，欢迎在GitHub上提交Issue。</p>
+
+    <p><strong>相关链接：</strong></p>
+    <ul>
+      <li>GitHub仓库: <a href="https://github.com/155143783/apiwatch">https://github.com/155143783/apiwatch</a></li>
+      <li>在线Demo: <a href="https://apiwatch-demo.fly.dev">https://apiwatch-demo.fly.dev</a></li>
+    </ul>
+
+    <hr>
+    <p><em>如果你觉得这个工具对你有帮助，欢迎在GitHub上给我一个Star！</em></p>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 AI Developer Blog. Built with GitHub Pages.</p>
+    <p><a href="https://github.com/155143783" target="_blank" rel="noopener">View on GitHub</a></p>
+  </footer>
+</body>
+</html>
