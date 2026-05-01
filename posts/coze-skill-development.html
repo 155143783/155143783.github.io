@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>从0到5个Coze技能：AI开发者零成本变现实战 | AI Developer Blog</title>
+  <meta name="description" content="分享我如何从零开始，用Coze Code CLI开发并部署5个AI技能网站的全过程。涵盖股票分析、热点调研、数据可视化、合规检测、抖音文案生成，以及如何通过Coze技能商店变现。">
+  <meta name="keywords" content="Coze, AI技能, Coze Code CLI, 零成本变现, AI开发, 技能商店, 股票分析, 数据可视化, 抖音文案">
+  <meta name="author" content="155143783">
+  <meta property="og:title" content="从0到5个Coze技能：AI开发者零成本变现实战">
+  <meta property="og:description" content="分享我如何从零开始开发5个Coze AI技能并部署上线的全过程，附变现思路。">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://155143783.github.io/posts/coze-skill-development.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="从0到5个Coze技能：AI开发者零成本变现实战">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="canonical" href="https://155143783.github.io/posts/coze-skill-development.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "从0到5个Coze技能：AI开发者零成本变现实战",
+    "description": "分享我如何从零开始开发5个Coze AI技能并部署上线的全过程",
+    "author": {"@type": "Person", "name": "155143783"},
+    "datePublished": "2026-05-01",
+    "url": "https://155143783.github.io/posts/coze-skill-development.html"
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <h1><a href="/">AI Developer Blog</a></h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="https://github.com/155143783">GitHub</a>
+    </nav>
+  </header>
+
+  <article>
+    <h2>从0到5个Coze技能：AI开发者零成本变现实战</h2>
+    <time datetime="2026-05-01">2026-05-01</time>
+
+    <p>如果你是AI开发者，一定听过Coze（扣子）——字节跳动旗下的AI Bot平台。但你可能不知道，Coze不仅能创建聊天机器人，还支持<strong>技能（Skill）开发</strong>和<strong>Web应用部署</strong>，而且<strong>完全免费</strong>。</p>
+
+    <p>这篇文章，我分享如何从零开始，用Coze Code CLI一口气开发并部署5个AI技能网站，以及背后的变现思路。</p>
+
+    <h3>🎯 为什么选择Coze技能？</h3>
+    <p>三个理由：</p>
+    <ol>
+      <li><strong>零成本部署</strong> — Coze提供免费托管，你不需要买服务器、买域名，直接获得coze.site子域名</li>
+      <li><strong>Coze Code CLI</strong> — 用命令行就能创建项目、生成代码、一键部署，开发效率极高</li>
+      <li><strong>技能商店分发</strong> — 上架Coze技能商店后，百万用户可以直接使用你的技能</li>
+    </ol>
+
+    <h3>🛠️ 开发过程</h3>
+
+    <h4>1. 安装Coze Code CLI</h4>
+    <pre><code>npm install -g @coze/code</code></pre>
+    <p>设置API Token后即可开始：</p>
+    <pre><code>export COZE_API_TOKEN="your_token"
+export COZE_SPACE_ID="your_space_id"</code></pre>
+
+    <h4>2. 用自然语言创建项目</h4>
+    <p>这是最爽的部分——你只需要描述你想要什么，Coze AI会自动生成完整的项目代码：</p>
+    <pre><code>coze code project create \
+  --message "创建一个股票技术分析网站，支持均线/MACD/RSI计算，支撑压力位识别，投资评级" \
+  --type web \
+  --wait</code></pre>
+    <p>Coze AI会自动生成前端页面、后端逻辑、配置文件，甚至Dockerfile。</p>
+
+    <h4>3. 一键部署</h4>
+    <pre><code>coze code deploy PROJECT_ID --wait</code></pre>
+    <p>几分钟后，你的网站就上线了，自动获得coze.site域名。</p>
+
+    <h3>📊 我开发的5个技能</h3>
+
+    <table>
+      <thead>
+        <tr><th>技能</th><th>功能</th><th>链接</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>股票技术分析</td>
+          <td>均线/MACD/RSI，支撑压力位，投资评级</td>
+          <td><a href="https://x9pbf5fcrh.coze.site">Try it</a></td>
+        </tr>
+        <tr>
+          <td>热点调研分析</td>
+          <td>跨平台热榜数据，痛点挖掘，趋势预测</td>
+          <td><a href="https://htygq3wvgb.coze.site">Try it</a></td>
+        </tr>
+        <tr>
+          <td>数据可视化</td>
+          <td>词云/折线/柱状/饼图，ECharts渲染</td>
+          <td><a href="https://rvpk8hwp7f.coze.site">Try it</a></td>
+        </tr>
+        <tr>
+          <td>全媒体合规检测</td>
+          <td>违禁词筛查，合规审查，改写建议</td>
+          <td><a href="https://z9sqwpctfp.coze.site">Try it</a></td>
+        </tr>
+        <tr>
+          <td>抖音爆款文案</td>
+          <td>钩子密集型口播文案，黄金3秒原则</td>
+          <td><a href="https://55nsg3w99r.coze.site">Try it</a></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>💡 踩坑记录</h3>
+
+    <h4>坑1：旧项目部署失败</h4>
+    <p>如果你只用 <code>coze code message send</code> 创建项目（不通过 <code>project create</code>），项目会缺少 <code>.coze</code> 配置文件，导致部署时报错 ".coze file not exist"。</p>
+    <p><strong>解法</strong>：始终用 <code>coze code project create --message "..." --type web</code> 创建项目，CLI会自动生成.coze文件。</p>
+
+    <h4>坑2：部署后404</h4>
+    <p>有时候部署成功了但访问返回404。这通常是项目代码本身的问题——Coze AI生成的代码偶尔会有bug。</p>
+    <p><strong>解法</strong>：用 <code>coze code message send</code> 给Coze AI发修复指令，让它修复代码，然后重新部署。或者直接用 <code>project create</code> 重建。</p>
+
+    <h4>坑3：项目类型选择</h4>
+    <p>Coze支持agent、workflow、skill、web、miniprogram等类型。如果你想创建可独立访问的网站，选择 <code>web</code> 类型。如果想在Bot对话中使用，选择 <code>skill</code> 类型。</p>
+
+    <h3>💰 变现路径</h3>
+
+    <ol>
+      <li><strong>Coze技能商店</strong> — 上架后按使用量获得收益</li>
+      <li><strong>开源引流</strong> — 在GitHub开源项目代码，博客写技术文章，吸引开发者关注</li>
+      <li><strong>API付费</strong> — 结合x402协议，让技能后端API支持微支付</li>
+      <li><strong>定制开发</strong> — 展示技能案例，接Coze技能定制开发单</li>
+    </ol>
+
+    <h3>🔗 相关资源</h3>
+    <ul>
+      <li><a href="https://github.com/155143783/mcp-data-api">MCP Data API (GitHub)</a></li>
+      <li><a href="https://github.com/155143783/x402-data-api">x402 Data API (GitHub)</a></li>
+      <li><a href="https://github.com/155143783/apiwatch">APIWatch (GitHub)</a></li>
+      <li><a href="/posts/mcp-x402-paid-api.html">MCP + x402: Building Paid API Services</a></li>
+    </ul>
+
+    <p>如果你也在做Coze技能开发，欢迎在GitHub上交流！</p>
+  </article>
+
+  <footer>
+    <p>&copy; 2026 AI Developer Blog | <a href="https://github.com/155143783">GitHub</a></p>
+  </footer>
+</body>
+</html>
