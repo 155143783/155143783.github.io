@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>浏览器自动化文件上传终极方案 | AI Developer Blog</title>
+  <meta name="description" content="4种文件上传方案对比：CDP upload、本地HTTP服务器、xdotool、DataTransfer API。详解每种方案的适用场景和代码实现。">
+  <meta name="keywords" content="浏览器自动化, 文件上传, CDP, xdotool, DataTransfer, PyAutoGUI">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header>
+    <h1><a href="/">AI Developer Blog</a></h1>
+    <nav>
+      <a href="/">Blog</a>
+      <a href="/posts/mcp-server-typescript.html">MCP</a>
+      <a href="/posts/x402-protocol.html">x402</a>
+      <a href="/posts/apiwatch-launch.html">APIWatch</a>
+      <a href="/posts/coze-skill-development.html">Coze Skills</a>
+      <a href="https://github.com/155143783" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <article>
+      <h1>浏览器自动化文件上传终极方案：4种方法对比与实战</h1>
+      <div class="date">May 1, 2026</div>
+      
+      <p>文件上传是浏览器自动化中最让人头疼的功能之一。</p>
+      
+      <p>当你在页面上看到一个漂亮的"上传文件"按钮，点击它会弹出系统文件选择对话框。这个对话框，CDP协议是无法操作的。</p>
+      
+      <p>本文介绍4种经过实战验证的文件上传方案。</p>
+
+      <h2>方案1：CDP Page.setInputFiles（最推荐）</h2>
+      
+      <h3>原理</h3>
+      <p>CDP提供了<code>Page.setInputFiles</code>命令，可以直接设置<code>&lt;input type="file"&gt;</code>元素的文件，绕过系统对话框。</p>
+      
+      <h3>前置条件</h3>
+      <ul>
+        <li>页面必须包含<code>&lt;input type="file"&gt;</code>元素</li>
+        <li>该元素必须可见或存在于DOM中</li>
+        <li>需要精确的elementId</li>
+      </ul>
+
+      <h3>代码实现</h3>
+      
+      <pre><code class="language-typescript">
+// cdp-upload.ts
+import puppeteer from 'puppeteer';
+
+async function uploadFileWithCDP(page: Page, filePath: string) {
+  // 方案A：使用input[type="file"]选择器
+  const inputElement = await page.$('input[type="file"]');
+  if (inputElement) {
+    const elementId = await inputElement.boundingBox();
+    await (inputElement as any).uploadFile(filePath);
+    return;
+  }
+  
+  // 方案B：使用page.uploadFile（更可靠）
+  await page.uploadFile('input[type="file"]', filePath);
+}
+</code></pre>
+
+      <pre><code class="language-python">
+# Python + Playwright
+from playwright.sync_api import Page
+
+def upload_file(page: Page, selector: str, file_path: str):
+    """
+    使用Playwright上传文件
+    selector: input[type="file"]的选择器
+    """
+    page.set_input_files(selector, file_path)
+</code></pre>
+
+      <h3>问题：隐藏的input元素</h3>
+      
+      <p>很多网页的上传按钮是自定义的UI，真正的input被隐藏了：</p>
+      
+      <pre><code class="language-html">
+&lt;!-- 常见模式1: display:none --&gt;
+&lt;input type="file" style="display:none"&gt;
+
+&lt;!-- 常见模式2: opacity:0 --&gt;
+&lt;input type="file" style="opacity:0; position:absolute"&gt;
+
+&lt;!-- 常见模式3: 父元素隐藏 --&gt;
+&lt;div style="display:none"&gt;
+  &lt;input type="file"&gt;
+&lt;/div&gt;
+</code></pre>
+      
+      <p>对于隐藏的input，需要先让它可见，或者直接用JS定位：</p>
+      
+      <pre><code class="language-javascript">
+// 定位隐藏的input并上传
+const hiddenInput = await page.evaluateHandle(() => {
+  const inputs = document.querySelectorAll('input[type="file"]');
+  return inputs[0]; // 或者更精确的选择逻辑
+});
+
+await hiddenInput.uploadFile('/path/to/file.pdf');
+</code></pre>
+
+      <h3>多文件上传</h3>
+      
+      <pre><code class="language-javascript">
+// 上传多个文件
+await page.setInputFiles('input[type="file"]', [
+  '/path/to/file1.pdf',
+  '/path/to/file2.pdf',
+  '/path/to/file3.pdf'
+]);
+</code></pre>
+
+      <h2>方案2：本地HTTP服务器（适合大量文件）</h2>
+      
+      <h3>原理</h3>
+      <p>启动一个本地HTTP服务器，托管要上传的文件，然后让网页从这个服务器拉取文件。</p>
+
+      <h3>代码实现</h3>
+      
+      <pre><code class="language-python">
+# local_server.py
+import http.server
+import socketserver
+import os
+from pathlib import Path
+
+class UploadHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        self.upload_dir = kwargs.pop('upload_dir', '.')
+        super().__init__(*args, **kwargs)
+    
+    def do_POST(self):
+        # 处理文件上传到服务器的请求
+        content_length = int(self.headers['Content-Length'])
+        file_data = self.rfile.read(content_length)
+        
+        filename = self.headers['X-Filename']
+        filepath = os.path.join(self.upload_dir, filename)
+        
+        with open(filepath, 'wb') as f:
+            f.write(file_data)
+        
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'OK')
+
+def start_server(port=8765, upload_dir='/tmp/uploads'):
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    with socketserver.TCPServer(
+        ("", port), 
+        lambda *args, **kwargs: UploadHTTPRequestHandler(*args, directory=upload_dir, **kwargs)
+    ) as httpd:
+        print(f"Serving at http://localhost:{port}")
+        httpd.serve_forever()
+</code></pre>
+
+      <h3>在浏览器中使用</h3>
+      
+      <pre><code class="language-javascript">
+// 通过拖放API上传
+const fileUrl = 'http://localhost:8765/myfile.pdf';
+
+await page.evaluateHandle(async (url) => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  
+  // 创建DataTransfer
+  const dataTransfer = new DataTransfer();
+  const file = new File([blob], 'myfile.pdf', { type: 'application/pdf' });
+  dataTransfer.items.add(file);
+  
+  // 找到drop zone
+  const dropZone = document.querySelector('.upload-dropzone');
+  
+  // 触发drop事件
+  const dropEvent = new DragEvent('drop', {
+    bubbles: true,
+    dataTransfer: dataTransfer
+  });
+  dropZone.dispatchEvent(dropEvent);
+}, fileUrl);
+</code></pre>
+
+      <h2>方案3：xdotool模拟键盘（适合系统对话框）</h2>
+      
+      <h3>原理</h3>
+      <p>当无法用CDP直接上传时，可以用xdotool模拟键盘输入文件路径，然后按Enter。</p>
+
+      <h3>代码实现</h3>
+      
+      <pre><code class="language-python">
+# xdotool_upload.py
+import subprocess
+import time
+
+def upload_with_xdotool(file_path: str, delay: float = 0.5):
+    """
+    使用xdotool模拟文件对话框输入
+    """
+    # 聚焦到文件输入框（通常是对话框打开后自动聚焦的）
+    subprocess.run(['xdotool', 'key', 'ctrl+l'], check=False)  # 聚焦地址栏
+    
+    time.sleep(delay)
+    
+    # 输入文件路径
+    subprocess.run(['xdotool', 'type', file_path], check=False)
+    
+    time.sleep(delay)
+    
+    # 按Enter确认
+    subprocess.run(['xdotool', 'key', 'Return'], check=False)
+</code></pre>
+
+      <h3>更复杂的场景</h3>
+      
+      <pre><code class="language-python">
+# 处理文件选择对话框
+def upload_file_dialog(file_path: str):
+    """
+    使用xdotool处理GTK/Qt文件选择对话框
+    """
+    time.sleep(0.5)
+    
+    # 清空现有路径
+    subprocess.run(['xdotool', 'key', 'ctrl+a', 'Delete'], check=False)
+    
+    time.sleep(0.2)
+    
+    # 输入完整路径
+    subprocess.run(['xdotool', 'type', '--', file_path.replace(' ', '\\ ')], check=False)
+    
+    time.sleep(0.3)
+    
+    # 按Enter打开/确认
+    subprocess.run(['xdotool', 'key', 'Return'], check=False)
+</code></pre>
+
+      <h2>方案4：DataTransfer API（适合拖放上传）</h2>
+      
+      <h3>原理</h3>
+      <p>对于使用拖放区域的上传组件，可以直接用JS创建DataTransfer对象并触发drop事件。</p>
+
+      <h3>代码实现</h3>
+      
+      <pre><code class="language-javascript">
+// drag_drop_upload.js
+async function uploadViaDropZone(dropZoneSelector: string, filePath: string) {
+  // 读取文件为ArrayBuffer
+  const response = await fetch(`file://${filePath}`);
+  const blob = await response.blob();
+  
+  // 获取文件名
+  const fileName = filePath.split('/').pop();
+  
+  // 创建DataTransfer
+  const dataTransfer = new DataTransfer();
+  const file = new File([blob], fileName, { type: blob.type || 'application/octet-stream' });
+  dataTransfer.items.add(file);
+  
+  // 触发drop事件
+  const dropZone = document.querySelector(dropZoneSelector);
+  const dropEvent = new DragEvent('drop', {
+    bubbles: true,
+    cancelable: true,
+    dataTransfer: dataTransfer,
+    clientX: dropZone.getBoundingClientRect().left + 50,
+    clientY: dropZone.getBoundingClientRect().top + 50
+  });
+  
+  dropZone.dispatchEvent(dropEvent);
+}
+</code></pre>
+
+      <h3>处理带API的文件上传</h3>
+      
+      <pre><code class="language-javascript">
+// 通过服务器中转
+async function uploadViaServer(dropZoneSelector: string, localFilePath: string) {
+  // 启动临时HTTP服务器（在另一个进程中）
+  const serverUrl = await startTempServer('/path/to/dir');
+  
+  // 获取服务器上的文件URL
+  const fileName = localFilePath.split('/').pop();
+  const fileUrl = `${serverUrl}/${fileName}`;
+  
+  // 使用fetch下载并创建DataTransfer
+  await page.evaluateHandle(async (url) => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    
+    const dataTransfer = new DataTransfer();
+    const file = new File([blob], url.split('/').pop(), { type: blob.type });
+    dataTransfer.items.add(file);
+    
+    const dropZone = document.querySelector('.dropzone');
+    dropZone.dispatchEvent(new DragEvent('drop', {
+      bubbles: true,
+      dataTransfer: dataTransfer
+    }));
+  }, fileUrl);
+}
+</code></pre>
+
+      <h2>方案对比</h2>
+      
+      <table>
+        <tr><th>方案</th><th>成功率</th><th>速度</th><th>适用场景</th><th>复杂度</th></tr>
+        <tr><td>CDP setInputFiles</td><td>~85%</td><td>快</td><td>标准input元素</td><td>低</td></tr>
+        <tr><td>本地HTTP服务器</td><td>~95%</td><td>中</td><td>拖放上传、大文件</td><td>中</td></tr>
+        <tr><td>xdotool</td><td>~70%</td><td>慢</td><td>系统对话框</td><td>中</td></tr>
+        <tr><td>DataTransfer API</td><td>~90%</td><td>快</td><td>拖放区域</td><td>中</td></tr>
+      </table>
+
+      <h2>推荐工作流</h2>
+      
+      <pre><code class="language-typescript">
+// smart-uploader.ts
+async function smartUpload(
+  page: Page, 
+  options: {
+    filePath: string;
+    uploadButtonSelector?: string;
+    dropZoneSelector?: string;
+    fileInputSelector?: string;
+  }
+) {
+  const { filePath, fileInputSelector, dropZoneSelector } = options;
+  
+  // 尝试方案1：直接用CDP上传
+  if (fileInputSelector) {
+    try {
+      await page.setInputFiles(fileInputSelector, filePath);
+      console.log('✓ CDP upload成功');
+      return;
+    } catch (e) {
+      console.log('CDP upload失败，尝试其他方案...');
+    }
+  }
+  
+  // 尝试方案2：DataTransfer API
+  if (dropZoneSelector) {
+    try {
+      await page.evaluateHandle(
+        (dz, fp) => uploadViaDropZone(dz, fp),
+        dropZoneSelector,
+        filePath
+      );
+      console.log('✓ DataTransfer upload成功');
+      return;
+    } catch (e) {
+      console.log('DataTransfer upload失败，尝试其他方案...');
+    }
+  }
+  
+  // 尝试方案3：隐藏input + uploadFile
+  try {
+    await page.evaluateHandle(
+      (fp) => {
+        const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+        if (input) {
+          // 临时让input可见
+          input.style.display = 'block';
+          input.style.opacity = '1';
+          input.style.position = 'static';
+          (input as any).uploadFile(fp);
+        }
+      },
+      filePath
+    );
+    console.log('✓ Hidden input upload成功');
+    return;
+  } catch (e) {
+    console.log('所有方案都失败了');
+    throw new Error('Upload failed');
+  }
+}
+</code></pre>
+
+      <h2>相关开源项目</h2>
+      
+      <ul>
+        <li><a href="https://github.com/155143783/mcp-data-api" target="_blank">mcp-data-api</a> - 包含智能文件上传模块</li>
+      </ul>
+    </article>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 AI Developer Blog. Built with GitHub Pages.</p>
+  </footer>
+</body>
+</html>

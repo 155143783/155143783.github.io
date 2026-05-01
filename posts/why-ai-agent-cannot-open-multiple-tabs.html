@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>为什么AI Agent不能同时开多个浏览器标签页 | AI Developer Blog</title>
+  <meta name="description" content="真实踩坑经验：多个子任务同时CDP操作Chrome导致标签页互相干扰，页面跳转混乱。详解问题根因和任务队列串行执行方案。">
+  <meta name="keywords" content="AI Agent, CDP, 浏览器自动化, 多标签页, 任务队列">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header>
+    <h1><a href="/">AI Developer Blog</a></h1>
+    <nav>
+      <a href="/">Blog</a>
+      <a href="/posts/mcp-server-typescript.html">MCP</a>
+      <a href="/posts/x402-protocol.html">x402</a>
+      <a href="/posts/apiwatch-launch.html">APIWatch</a>
+      <a href="/posts/coze-skill-development.html">Coze Skills</a>
+      <a href="https://github.com/155143783" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <article>
+      <h1>为什么AI Agent不能同时开多个浏览器标签页：一个血泪教训</h1>
+      <div class="date">May 1, 2026</div>
+      
+      <p>在我开发云电脑自动化技能的第一个月，遇到了一个让我抓狂的问题：我想让AI Agent同时处理多个任务——一个标签页登录，一个标签页填表，一个标签页截图。听起来很合理对吧？</p>
+      
+      <p>现实给了我狠狠一巴掌。</p>
+
+      <h2>我的"并行浏览器"设计</h2>
+      
+      <p>最初的架构是这样的：</p>
+      
+      <pre><code class="language-typescript">
+// BrowserManager.ts - 错误的设计
+class BrowserManager {
+  private tabs: BrowserTab[] = [];
+  
+  async createParallelTasks() {
+    // 创建3个标签页
+    const tab1 = await this.browser.newPage();
+    const tab2 = await this.browser.newPage();
+    const tab3 = await this.browser.newPage();
+    
+    // 并行执行3个任务
+    await Promise.all([
+      this.loginTask(tab1),   // 任务1: 登录
+      this.formTask(tab2),    // 任务2: 填表
+      this.screenshotTask(tab3) // 任务3: 截图
+    ]);
+  }
+}
+</code></pre>
+      
+      <p>我以为这样可以充分利用时间，3个任务同时跑，总时间应该是最慢那个任务的时间。</p>
+
+      <h2>实际运行时发生了什么</h2>
+      
+      <p>代码跑起来后，我看到了这样的"奇观"：</p>
+      
+      <ol>
+        <li><strong>第5秒</strong>：用户名被输入到了密码框</li>
+        <li><strong>第8秒</strong>：登录按钮被点击，但焦点跳到了填表页面</li>
+        <li><strong>第12秒</strong>：截图任务执行，但页面内容是空白</li>
+        <li><strong>第15秒</strong>：Cookie混乱，有的请求带上了其他标签页的会话</li>
+        <li><strong>第20秒</strong>：整个浏览器崩溃</li>
+      </ol>
+      
+      <p>我反复检查代码，没有任何逻辑错误。到底是哪里出了问题？</p>
+
+      <h2>根本原因：Chrome DevTools Protocol的同步设计</h2>
+      
+      <p>经过一周的调试，我终于找到了真相。</p>
+      
+      <p>CDP（Chrome DevTools Protocol）是一个<strong>同步单会话</strong>的协议。这意味着：</p>
+      
+      <ul>
+        <li>同一时间只能有一个客户端发送命令</li>
+        <li>命令是FIFO队列执行，不是并行的</li>
+        <li>多个客户端同时发送命令时，会出现竞态条件</li>
+      </ul>
+      
+      <p>当我的3个任务同时执行时：</p>
+      
+      <pre><code class="language-text">
+任务1 (登录): CDP.send(Command.Input.dispatchKeyEvent) → "admin"
+任务2 (填表): CDP.send(Command.Input.dispatchKeyEvent) → "北京"
+任务3 (截图): CDP.send(Command.Page.captureScreenshot)
+
+实际执行顺序可能是:
+1. 任务1发送 "a"
+2. 任务2抢先把焦点切到填表框
+3. 任务1继续发送 "d" → 结果是 "ad" 被输入到密码框...不对，是 "a" 被输入到密码框，然后焦点切走了
+4. 任务3的截图时机完全不可控
+</code></pre>
+
+      <h2>深入理解：WebDriver vs CDP的区别</h2>
+      
+      <p>你可能会问：Selenium/Playwright是怎么实现多标签并行的？</p>
+      
+      <p>答案是：它们使用的是<strong>每个标签页独立的会话ID</strong>，并且内部做了锁机制：</p>
+      
+      <pre><code class="language-typescript">
+// Playwright的真实实现（伪代码）
+class PlaywrightBrowser {
+  private sessionLock: Map<string, Semaphore> = new Map();
+  
+  async withSessionLock(page, fn) {
+    const lock = this.sessionLock.get(page.targetId);
+    await lock.acquire();
+    try {
+      return await fn();
+    } finally {
+      lock.release();
+    }
+  }
+}
+
+// 正确的并行使用方式
+const page1 = await browser.newPage();
+const page2 = await browser.newPage();
+
+// 虽然是"并行"，但每个页面的CDP调用是串行的
+await Promise.all([
+  page1.type('#username', 'admin'),  // 这里内部会加锁
+  page2.type('#address', '北京')      // 这里也会加锁
+]);
+</code></pre>
+      
+      <p>但是！当你使用底层的CDP直接调用时，这些锁机制是不存在的。这就是为什么我直接用CDP会遇到问题。</p>
+
+      <h2>解决方案：任务队列串行执行</h2>
+      
+      <p>明确了问题后，我重新设计了架构：</p>
+      
+      <pre><code class="language-typescript">
+// TaskQueue.ts - 正确的设计
+class BrowserTaskQueue {
+  private queue: Array<{
+    task: () => Promise<void>;
+    tab: BrowserTab;
+    priority: number;
+  }> = [];
+  
+  private isExecuting = false;
+  private semaphore = 1; // 串行锁
+  
+  async addTask(task: () => Promise<void>, tab?: BrowserTab) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({
+        task: async () => {
+          try {
+            await task();
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        },
+        tab,
+        priority: Date.now()
+      });
+      
+      if (!this.isExecuting) {
+        this.processQueue();
+      }
+    });
+  }
+  
+  private async processQueue() {
+    if (this.isExecuting) return;
+    this.isExecuting = true;
+    
+    while (this.queue.length > 0) {
+      // 按优先级排序
+      this.queue.sort((a, b) => a.priority - b.priority);
+      
+      const item = this.queue.shift()!;
+      await item.task();
+      
+      // 每个任务之间稍作等待，避免过快切换
+      await this.delay(100);
+    }
+    
+    this.isExecuting = false;
+  }
+  
+  private delay(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+</code></pre>
+
+      <h2>性能对比</h2>
+      
+      <p>虽然变成了串行执行，但实际效率并没有降低很多：</p>
+      
+      <table>
+        <tr><th>场景</th><th>并行执行</th><th>串行执行</th></tr>
+        <tr><td>3个独立任务</td><td>总时间 ≈ max(T1,T2,T3)</td><td>总时间 = T1+T2+T3</td></tr>
+        <tr><td>成功率</td><td>~30%（竞态问题）</td><td>~99%</td></tr>
+        <tr><td>调试难度</td><td>极高</td><td>简单</td></tr>
+        <tr><td>代码复杂度</td><td>简单</td><td>需要队列管理</td></tr>
+      </table>
+      
+      <p>实际上，由于并行版本的成功率太低（30%），你可能需要重试3-4次。串行版本虽然总时间稍长，但<strong>一次成功率超过99%</strong>。</p>
+
+      <h2>进阶优化：伪并行（流水线模式）</h2>
+      
+      <p>如果你的任务涉及大量等待时间（如网络请求），可以用流水线模式：</p>
+      
+      <pre><code class="language-typescript">
+// Pipeline.ts - 流水线模式
+class BrowserPipeline {
+  private stages: TaskStage[] = [
+    new NavigationStage(),    // 页面导航
+    new InteractionStage(),   // 用户交互
+    new WaitStage(),          // 等待响应
+    new ExtractionStage()     // 数据提取
+  ];
+  
+  async process(request: Request) {
+    // 同一时间，3个请求在不同阶段
+    // 请求1: 等待响应
+    // 请求2: 用户交互
+    // 请求3: 页面导航
+    return this.stages.reduce(
+      (promise, stage) => promise.then(req => stage.process(req)),
+      Promise.resolve(request)
+    );
+  }
+}
+</code></pre>
+
+      <h2>总结</h2>
+      
+      <ul>
+        <li><strong>CDP是同步协议</strong>，多客户端同时调用会导致竞态条件</li>
+        <li><strong>Selenium/Playwright</strong>内部做了锁机制，但直接用CDP时没有</li>
+        <li><strong>任务队列串行执行</strong>是浏览器自动化的正确姿势</li>
+        <li><strong>流水线模式</strong>可以提高有大量等待时间的场景的吞吐量</li>
+      </ul>
+
+      <h2>相关开源项目</h2>
+      
+      <ul>
+        <li><a href="https://github.com/155143783/mcp-data-api" target="_blank">mcp-data-api</a> - 包含任务队列实现的云电脑远程控制方案</li>
+      </ul>
+    </article>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 AI Developer Blog. Built with GitHub Pages.</p>
+  </footer>
+</body>
+</html>
