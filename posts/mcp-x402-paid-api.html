@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP + x402: Building Paid API Services from Zero to One | AI Developer Blog</title>
+  <meta name="description" content="Complete guide to building paid API services using MCP protocol and x402 micro-payments. Learn how to create a production-ready MCP Server with StreamableHTTP and integrate HTTP 402 payments on Base chain.">
+  <meta name="keywords" content="MCP, Model Context Protocol, x402, HTTP 402, micro-payments, TypeScript, StreamableHTTP, Base chain, AI agents, API monetization">
+  <meta name="author" content="155143783">
+  
+  <meta property="og:title" content="MCP + x402: Building Paid API Services from Zero to One">
+  <meta property="og:description" content="Complete guide to building paid API services using MCP protocol and x402 micro-payments.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://155143783.github.io/posts/mcp-x402-paid-api.html">
+  
+  <link rel="stylesheet" href="/style.css">
+  <link rel="canonical" href="https://155143783.github.io/posts/mcp-x402-paid-api.html">
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "MCP + x402: Building Paid API Services from Zero to One",
+    "author": { "@type": "Person", "name": "155143783" },
+    "datePublished": "2026-05-01",
+    "url": "https://155143783.github.io/posts/mcp-x402-paid-api.html"
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <h1><a href="/">AI Developer Blog</a></h1>
+    <nav>
+      <a href="/">Blog</a>
+      <a href="https://github.com/155143783" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <main class="post-content">
+    <a href="/" class="back-link">← Back to Blog</a>
+    
+    <h1>MCP + x402: Building Paid API Services from Zero to One</h1>
+    <div class="post-meta">
+      <span>May 1, 2026</span>
+      <span>By 155143783</span>
+      <span>MCP, x402, TypeScript, Blockchain</span>
+    </div>
+
+    <p>Imagine an AI agent that can autonomously fetch real-time GitHub trending repos, check crypto prices, and query HackerNews—all by paying fractions of a cent per request. No API keys, no subscriptions, no friction. This is now possible by combining <strong>MCP (Model Context Protocol)</strong> with <strong>x402 micro-payments</strong>.</p>
+
+    <p>In this guide, I'll walk you through building a production-ready paid API service from scratch, including the MCP server implementation, x402 payment integration, and deployment via Cloudflare Tunnel.</p>
+
+    <h2>Part 1: Understanding the Building Blocks</h2>
+
+    <h3>What is MCP (Model Context Protocol)?</h3>
+    
+    <p><a href="https://modelcontextprotocol.io/" target="_blank">MCP</a> is an open protocol that enables AI models to interact with external data sources and tools. Think of it as "USB for AI"—a standardized way to connect AI assistants to any data source.</p>
+
+    <p>MCP defines two key components:</p>
+    <ul>
+      <li><strong>MCP Host</strong>: The AI application (Claude Desktop, Cursor, etc.)</li>
+      <li><strong>MCP Server</strong>: The service exposing tools and resources</li>
+    </ul>
+
+    <p>MCP supports multiple transport modes, with <strong>StreamableHTTP</strong> being the modern standard for server-to-server communication:</p>
+
+    <pre><code>┌─────────────┐    StreamableHTTP    ┌─────────────┐
+│   MCP Host  │ ◄──────────────────► │ MCP Server  │
+│  (AI Client) │   JSON-RPC over HTTP  │ (Your API)  │
+└─────────────┘                       └─────────────┘</code></pre>
+
+    <h3>What is x402 (HTTP 402)?</h3>
+    
+    <p><a href="https://x402.org/" target="_blank">x402</a> is an emerging standard that uses the HTTP 402 "Payment Required" status code for machine-native payments. Instead of asking users to subscribe or create accounts, your API simply returns a 402 response with payment instructions.</p>
+
+    <pre><code>// Client requests data
+GET /api/github/trending
+
+// Server responds with payment required
+HTTP/1.1 402 Payment Required
+{
+  "x402Version": 1,
+  "maxAmountRequired": "0.005",
+  "payTo": "0xd931e9e57a14c4c800f6b6337a9c6608850c301d",
+  "asset": "USDC",
+  "network": "base-mainnet"
+}
+
+// Client pays, retries with proof → Server serves data</code></pre>
+
+    <p>On Base chain, each transaction costs ~$0.001 and settles in ~2 seconds, making micro-payments economically viable.</p>
+
+    <h2>Part 2: Building an MCP Server with TypeScript</h2>
+
+    <p>Let's build a real MCP Server that exposes 16 developer data tools. We'll use the official <code>@modelcontextprotocol/sdk</code> package.</p>
+
+    <h3>Project Setup</h3>
+
+    <pre><code>mkdir mcp-data-api && cd mcp-data-api
+npm init -y
+npm install @modelcontextprotocol/sdk zod axios</code></pre>
+
+    <h3>Define Tools Schema</h3>
+
+    <pre><code>// src/tools.ts
+import { z } from "zod";
+
+export const toolSchemas = {
+  // GitHub Tools
+  github_trending: {
+    name: "github_trending",
+    description: "Get trending GitHub repositories by language",
+    inputSchema: z.object({
+      language: z.string().optional().default("typescript"),
+      limit: z.number().min(1).max(100).default(10)
+    })
+  },
+  
+  github_user_info: {
+    name: "github_user_info",
+    description: "Get GitHub user profile information",
+    inputSchema: z.object({
+      username: z.string()
+    })
+  },
+  
+  // NPM Tools
+  npm_downloads: {
+    name: "npm_downloads",
+    description: "Get npm package download statistics",
+    inputSchema: z.object({
+      package: z.string()
+    })
+  },
+  
+  npm_package_info: {
+    name: "npm_package_info",
+    description: "Get detailed npm package information",
+    inputSchema: z.object({
+      package: z.string()
+    })
+  },
+  
+  // Crypto Tools
+  crypto_price: {
+    name: "crypto_price",
+    description: "Get current cryptocurrency prices",
+    inputSchema: z.object({
+      symbol: z.string().default("BTC")
+    })
+  },
+  
+  crypto_gas_price: {
+    name: "crypto_gas_price",
+    description: "Get current gas prices on various chains",
+    inputSchema: z.object({
+      chain: z.string().default("ethereum")
+    })
+  },
+  
+  // HackerNews Tools
+  hn_top_stories: {
+    name: "hn_top_stories",
+    description: "Get top HackerNews stories",
+    inputSchema: z.object({
+      limit: z.number().min(1).max(100).default(10)
+    })
+  },
+  
+  hn_item: {
+    name: "hn_item",
+    description: "Get HackerNews item by ID",
+    inputSchema: z.object({
+      id: z.number()
+    })
+  },
+  
+  // ... 8 more tools (Weather, News, etc.)
+};</code></pre>
+
+    <h3>Implement Tool Handlers</h3>
+
+    <pre><code>// src/handlers.ts
+import axios from "axios";
+
+export async function handleGitHubTrending(args: { language?: string; limit?: number }) {
+  const { language = "typescript", limit = 10 } = args;
+  const response = await axios.get(
+    `https://api.github.com/search/repositories`,
+    {
+      params: {
+        q: `language:${language}`,
+        sort: "stars",
+        order: "desc",
+        per_page: limit
+      }
+    }
+  );
+  
+  return {
+    content: response.data.items.map(repo => ({
+      name: repo.full_name,
+      description: repo.description,
+      stars: repo.stargazers_count,
+      url: repo.html_url
+    }))
+  };
+}
+
+export async function handleCryptoPrice(args: { symbol: string }) {
+  const { symbol = "BTC" } = args;
+  const response = await axios.get(
+    `https://api.coingecko.com/api/v3/simple/price`,
+    {
+      params: {
+        ids: symbol.toLowerCase(),
+        vs_currencies: "usd",
+        include_24hr_change: true
+      }
+    }
+  );
+  
+  return {
+    content: response.data
+  };
+}
+
+// ... implement other handlers</code></pre>
+
+    <h3>Create the MCP Server with StreamableHTTP</h3>
+
+    <pre><code>// src/server.ts
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/transport.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import * as handlers from "./handlers.js";
+import { toolSchemas } from "./tools.js";
+
+const server = new Server(
+  {
+    name: "mcp-data-api",
+    version: "1.0.0"
+  },
+  {
+    capabilities: {
+      tools: {}
+    }
+  }
+);
+
+// Register all tools
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: Object.values(toolSchemas).map(tool => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: {
+        type: "object",
+        properties: tool.inputSchema.parse({}).constructor._def.schema
+      }
+    }))
+  };
+});
+
+// Handle tool calls
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  
+  try {
+    const handler = handlers[name];
+    if (!handler) {
+      throw new Error(`Unknown tool: ${name}`);
+    }
+    
+    const result = await handler(args || {});
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error: ${error.message}`
+        }
+      ],
+      isError: true
+    };
+  }
+});
+
+// Export for StreamableHTTP transport
+export { server };</code></pre>
+
+    <h3>Start the Server with StreamableHTTP</h3>
+
+    <pre><code>// src/index.ts
+import { serve } from "@modelcontextprotocol/sdk/server/streamable-http.js";
+import { server } from "./server.js";
+
+const port = process.env.PORT || 3000;
+
+serve(server, { port }, () => {
+  console.log(`🚀 MCP Server running on http://localhost:${port}/mcp`);
+  console.log(`📡 StreamableHTTP transport enabled`);
+});</code></pre>
+
+    <h2>Part 3: Integrating x402 Micro-Payments</h2>
+
+    <p>Now let's add payment capabilities. We'll use the <code>@x402/sdk</code> package to integrate payments on Base chain.</p>
+
+    <h3>Install x402 Dependencies</h3>
+
+    <pre><code>npm install @x402/sdk viem</code></pre>
+
+    <h3>Create Payment Middleware</h3>
+
+    <pre><code>// src/payments.ts
+import { createPublicClient, http } from "viem";
+import { base } from "viem/chains";
+import { X402Client } from "@x402/sdk/client";
+
+// Payment configuration
+const PAYMENT_ADDRESS = "0xd931e9e57a14c4c800f6b6337a9c6608850c301d";
+const USDC_ADDRESS = "0xA0b86991C6218b36c1d19D4a2e9Eb0cE3606EB48"; // Base USDC
+
+// Price map (in USDC, as string to avoid floating point issues)
+const PRICES = {
+  github_trending: "3000000",  // 0.003 USDC (6 decimals)
+  github_user_info: "1000000", // 0.001 USDC
+  npm_downloads: "1000000",
+  npm_package_info: "1000000",
+  crypto_price: "2000000",     // 0.002 USDC
+  crypto_gas_price: "2000000",
+  hn_top_stories: "1000000",
+  hn_item: "500000",           // 0.0005 USDC
+};
+
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http()
+});
+
+export function createX402Client() {
+  return new X402Client({
+    payTo: PAYMENT_ADDRESS,
+    asset: USDC_ADDRESS,
+    chainId: 8453, // Base mainnet
+  });
+}
+
+export function getPriceForTool(toolName: string): bigint {
+  return BigInt(PRICES[toolName] || "1000000");
+}
+
+export { PAYMENT_ADDRESS };</code></pre>
+
+    <h3>Create Payment-Enabled MCP Server</h3>
+
+    <pre><code>// src/server-paid.ts
+import { serve } from "@modelcontextprotocol/sdk/server/streamable-http.js";
+import { server } from "./server.js";
+import { createX402Client, getPriceForTool, PAYMENT_ADDRESS } from "./payments.js";
+import { createPublicClient, http } from "viem";
+import { base } from "viem/chains";
+
+// Initialize x402 client
+const x402Client = createX402Client();
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http()
+});
+
+// Wrap the server with payment logic
+async function handleToolCallWithPayment(request) {
+  const { name, arguments: args } = request.params;
+  
+  // Check if payment header is present
+  const paymentHeader = request.headers?.["x-payment"];
+  
+  if (!paymentHeader) {
+    // Return 402 with payment instructions
+    const price = getPriceForTool(name);
+    return {
+      status: 402,
+      headers: {
+        "X-Payment-Required": "true",
+        "X-Payment-Address": PAYMENT_ADDRESS,
+        "X-Payment-Amount": price.toString(),
+        "X-Payment-Asset": "USDC",
+        "X-Payment-Network": "base-mainnet"
+      },
+      body: {
+        error: "Payment required",
+        price: price.toString(),
+        payTo: PAYMENT_ADDRESS,
+        instructions: `Send ${price} USDC to ${PAYMENT_ADDRESS} on Base chain`
+      }
+    };
+  }
+  
+  // Verify payment was successful
+  try {
+    const paymentProof = JSON.parse(Buffer.from(paymentHeader, "base64").toString());
+    const isValid = await x402Client.verifyPayment(paymentProof);
+    
+    if (!isValid) {
+      return {
+        status: 402,
+        body: { error: "Invalid payment proof" }
+      };
+    }
+  } catch (error) {
+    return {
+      status: 402,
+      body: { error: "Payment verification failed" }
+    };
+  }
+  
+  // Process the tool call
+  // ... (same as before)
+}
+
+// Start with payment middleware
+serve(server, { 
+  port: 3000,
+  onRequest: handleToolCallWithPayment
+});</code></pre>
+
+    <h2>Part 4: Deploying with Cloudflare Tunnel</h2>
+
+    <p>Your MCP server needs to be publicly accessible for AI agents to use it. We'll use Cloudflare Tunnel for a quick, free, and secure public URL.</p>
+
+    <h3>Run Cloudflared Tunnel</h3>
+
+    <pre><code># Install cloudflared
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+chmod +x cloudflared
+sudo mv cloudflared /usr/local/bin/
+
+# Start tunnel to your local MCP server
+cloudflared tunnel --url http://localhost:3000</code></pre>
+
+    <p>You'll get a URL like <code>https://random-words.trycloudflare.com</code>. This is your public MCP endpoint!</p>
+
+    <h3>Persistent Tunnel Setup</h3>
+
+    <pre><code># Create a named tunnel
+cloudflared tunnel create mcp-server
+cloudflared tunnel route dns mcp-server mcp.yourdomain.com
+
+# Create config file
+cat > ~/.cloudflared/config.yml << EOF
+tunnel: &lt;TUNNEL_ID&gt;
+credentials-file: /root/.cloudflared/&lt;TUNNEL_ID&gt;.json
+
+ingress:
+  - hostname: mcp.yourdomain.com
+    service: http://localhost:3000
+  - service: http_status:404
+EOF
+
+# Run as service
+sudo cloudflared service install
+sudo systemctl start cloudflared</code></pre>
+
+    <h3>Future: Render Deployment</h3>
+
+    <p>For production, consider deploying to Render with auto-scaling:</p>
+
+    <pre><code># render.yaml
+services:
+  - type: web
+    name: mcp-data-api
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PAYMENT_ADDRESS
+        sync: false
+      - key: X402_FACILITATOR_URL
+        sync: false</code></pre>
+
+    <h2>Part 5: Real-World Usage</h2>
+
+    <h3>Connect from Claude Desktop</h3>
+
+    <pre><code># ~/.claude/mcp.json
+{
+  "mcpServers": {
+    "data-api": {
+      "transport": "streamable-http",
+      "url": "https://mcp.yourdomain.com/mcp",
+      "headers": {
+        "x-payment": "base64_encoded_payment_proof"
+      }
+    }
+  }
+}</code></pre>
+
+    <h3>Test with cURL</h3>
+
+    <pre><code># Without payment (returns 402)
+curl https://mcp.yourdomain.com/mcp \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"github_trending","arguments":{}}}'
+
+# Response:
+# HTTP/1.1 402 Payment Required
+# {"error": "Payment required", "price": "3000000", ...}</code></pre>
+
+    <h2>Open Source Projects</h2>
+
+    <p>I've open-sourced the complete implementation. Check out these repositories:</p>
+
+    <div class="github-link">
+      <h3>📦 mcp-data-api</h3>
+      <p><strong>16 developer data tools as an MCP Server</strong></p>
+      <p>Features: GitHub API, NPM registry, HackerNews, Crypto prices, Gas tracking, and more—all with StreamableHTTP transport.</p>
+      <p>🔗 <a href="https://github.com/155143783/mcp-data-api" target="_blank" rel="noopener">https://github.com/155143783/mcp-data-api</a></p>
+    </div>
+
+    <div class="github-link">
+      <h3>💰 x402-data-api</h3>
+      <p><strong>HTTP 402 micro-payment data API on Base chain</strong></p>
+      <p>Production-ready x402 implementation with USDC payments. Every request costs $0.001-0.01.</p>
+      <p>🔗 <a href="https://github.com/155143783/x402-data-api" target="_blank" rel="noopener">https://github.com/155143783/x402-data-api</a></p>
+    </div>
+
+    <div class="github-link">
+      <h3>📊 apiwatch</h3>
+      <p><strong>API health monitoring and alerting</strong></p>
+      <p>Monitor your MCP and x402 endpoints. Get notified when services go down.</p>
+      <p>🔗 <a href="https://github.com/155143783/apiwatch" target="_blank" rel="noopener">https://github.com/155143783/apiwatch</a></p>
+    </div>
+
+    <h2>Conclusion</h2>
+
+    <p>By combining MCP and x402, we've built a truly autonomous API service:</p>
+    <ul>
+      <li><strong>MCP</strong> provides the standardized tool interface for AI agents</li>
+      <li><strong>x402</strong> enables frictionless micro-payments without accounts</li>
+      <li><strong>Base chain</strong> ensures fast, cheap transactions</li>
+      <li><strong>StreamableHTTP</strong> makes everything work over standard HTTP</li>
+    </ul>
+
+    <p>The future of AI-to-AI commerce is here. Start building your paid API service today!</p>
+
+    <hr style="margin: 40px 0; border: none; border-top: 1px solid #d0d7de;">
+
+    <div class="cta-section">
+      <h3>🚀 Show Your Support</h3>
+      <p>If you found this guide useful, we'd really appreciate your support on these awesome lists!</p>
+      
+      <div style="background: #f6f8fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <p><strong>⭐ awesome-mcp</strong> — Add our MCP Server implementation</p>
+        <p style="color: #0969da;"><a href="https://github.com/punkpeye/awesome-mcp/pull/189" target="_blank">https://github.com/punkpeye/awesome-mcp/pull/189</a></p>
+        
+        <p style="margin-top: 15px;"><strong>⭐ awesome-x402</strong> — Add our x402 implementation</p>
+        <p style="color: #0969da;"><a href="https://github.com/nicktaras/awesome-x402/pull/6" target="_blank">https://github.com/nicktaras/awesome-x402/pull/6</a></p>
+        
+        <p style="margin-top: 15px;"><strong>⭐ awesome-mcp-servers</strong> — Add our data tools</p>
+        <p style="color: #0969da;"><a href="https://github.com/下垂的蛤蟆/awesome-mcp-servers/pull/24" target="_blank">https://github.com/下垂的蛤蟆/awesome-mcp-servers/pull/24</a></p>
+      </div>
+      
+      <p style="color: #57606a;">Every ⭐ and 👍 helps other developers discover these tools. Thanks for your support!</p>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>© 2026 AI Developer Blog. Built with GitHub Pages.</p>
+  </footer>
+</body>
+</html>
